@@ -160,9 +160,9 @@ const spawnItem = () => {
   const x = Math.random() * (window.innerWidth - width);
   const y = -height;
   
-  // Base speed scales up by level
+  // Base speed scales up slowly by level (max Level 5)
   const baseSpeed = Math.random() * 2 + 3.5;
-  const speed = baseSpeed + (currentLevel.value - 1) * 1.5;
+  const speed = baseSpeed + (currentLevel.value - 1) * 0.9;
   
   const angle = Math.random() * 360;
   const spinSpeed = (Math.random() - 0.5) * 4; // rotation speed between -2 and +2 degrees per frame
@@ -184,8 +184,8 @@ const catchItem = (item: FallingItem) => {
   const points = item.type === 'golden' ? 50 : 10;
   score.value += points;
   
-  // Check for Level Up (every 250 points)
-  const newLevel = Math.floor(score.value / 250) + 1;
+  // Check for Level Up (every 400 points, max Level 5)
+  const newLevel = Math.min(5, Math.floor(score.value / 400) + 1);
   if (newLevel > currentLevel.value) {
     currentLevel.value = newLevel;
     triggerLevelUp();
@@ -274,7 +274,7 @@ const gameLoop = (timestamp: number) => {
   
   // 2. Spawning Chunks
   spawnTimer += deltaTime;
-  const spawnInterval = Math.max(250, 1000 - (currentLevel.value - 1) * 150);
+  const spawnInterval = Math.max(300, 1000 - (currentLevel.value - 1) * 120);
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
     spawnItem();
@@ -480,6 +480,10 @@ onUnmounted(() => {
           <div class="score-row">
             <span class="label">최종 획득 점수</span>
             <span class="val pulse-glow">{{ score }}</span>
+          </div>
+          <div class="score-row">
+            <span class="label">종료 시 레벨</span>
+            <span class="val level-color">LEVEL {{ currentLevel }}</span>
           </div>
           <div class="score-row">
             <span class="label">개인 최고 기록</span>
@@ -869,6 +873,11 @@ onUnmounted(() => {
   color: #ef4444;
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
   animation: pulse 1s infinite alternate;
+}
+
+.level-color {
+  color: #67e8f9;
+  text-shadow: 0 0 10px rgba(103, 232, 249, 0.6);
 }
 
 @keyframes pulse {
