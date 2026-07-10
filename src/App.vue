@@ -31,7 +31,7 @@ const processedMeatSrc = ref('');
 
 const score = ref(0);
 const highScore = ref(0);
-const lives = ref(3);
+const lives = ref(10);
 
 const offsetX = ref(0);
 const rotation = ref(0);
@@ -139,8 +139,8 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
 const spawnItem = () => {
   const isGolden = Math.random() < 0.15; // 15% chance to spawn golden tuna
-  const width = 60;
-  const height = 42;
+  const width = 85;
+  const height = 60;
   const x = Math.random() * (window.innerWidth - width);
   const y = -height;
   
@@ -199,7 +199,7 @@ const gameLoop = (timestamp: number) => {
   lastTime = timestamp;
   
   // 1. Move Player
-  const moveSpeed = 11; // pixels per frame
+  const moveSpeed = 18; // pixels per frame
   if (keysPressed.ArrowLeft) {
     offsetX.value -= moveSpeed;
     rotation.value = -12;
@@ -277,7 +277,7 @@ const gameLoop = (timestamp: number) => {
 
 const startGame = () => {
   score.value = 0;
-  lives.value = 3;
+  lives.value = 10;
   offsetX.value = 0;
   rotation.value = 0;
   fallingItems.value = [];
@@ -322,7 +322,7 @@ onUnmounted(() => {
       </div>
       <div class="lives-container">
         <div 
-          v-for="life in 3" 
+          v-for="life in 10" 
           :key="life" 
           class="heart" 
           :class="{ lost: life > lives }"
@@ -402,7 +402,7 @@ onUnmounted(() => {
             <li>⌨️ <b>좌우 방향키(←, →)</b>를 눌러 참치캔을 레일 위로 움직집니다.</li>
             <li>🐟 <b>하늘에서 비처럼 내리는 참치 살코기</b>를 참치캔 안으로 받으세요 (+10).</li>
             <li>✨ 희귀한 <b>황금 참치 살코기</b>는 엄청난 보너스를 제공합니다 (+50).</li>
-            <li>💔 일반 살코기를 바닥에 떨어뜨리면 <b>라이프(❤️)가 1 줄어듭니다</b> (총 3개).</li>
+            <li>💔 일반 살코기를 바닥에 떨어뜨리면 <b>라이프(❤️)가 1 줄어듭니다</b> (총 10개).</li>
             <li>🌀 화면 끝으로 넘어가면 <b>반대편 화면 끝으로 이어지는 루프(Wrap)</b> 효과 적용!</li>
           </ul>
         </div>
