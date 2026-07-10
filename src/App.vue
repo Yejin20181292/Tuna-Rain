@@ -86,14 +86,9 @@ onMounted(() => {
       <!-- Conveyor Belt Background -->
       <img src="/conveyor.png" alt="Conveyor Belt" class="conveyor-belt" />
       
-      <!-- Moving Tuna Cans -->
+      <!-- Static Tuna Can -->
       <div v-if="processedTunaSrc" class="cans-container">
-        <div 
-          v-for="i in 6" 
-          :key="i" 
-          class="tuna-can"
-          :style="{ animationDelay: `${(i - 1) * 3}s` }"
-        >
+        <div class="tuna-can-static">
           <img :src="processedTunaSrc" alt="Tuna Can" />
         </div>
       </div>
@@ -141,27 +136,18 @@ onMounted(() => {
   pointer-events: none;
 }
 
-.tuna-can {
+.tuna-can-static {
   position: absolute;
-  bottom: 15px; /* Adjust this value so the can sits precisely on the guide rail track */
-  height: 52px; /* Proportional size of the can compared to the conveyor belt */
-  transform: translateX(-150px);
-  animation: moveCan 18s linear infinite;
+  bottom: 12px; /* Adjust this value so the larger can sits precisely on the guide rail track */
+  left: 50%;
+  transform: translateX(-50%);
+  height: 75px; /* Larger size as requested */
 }
 
-.tuna-can img {
+.tuna-can-static img {
   height: 100%;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(2px 5px 4px rgba(0, 0, 0, 0.35)); /* Adds a shadow to the can itself */
-}
-
-@keyframes moveCan {
-  0% {
-    transform: translateX(-150px);
-  }
-  100% {
-    transform: translateX(100vw);
-  }
+  filter: drop-shadow(4px 8px 8px rgba(0, 0, 0, 0.45)); /* Stronger shadow for the larger can to add depth */
 }
 </style>
