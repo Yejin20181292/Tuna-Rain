@@ -20,6 +20,7 @@ interface ScorePopup {
   text: string;
   age: number;
   isGolden: boolean;
+  isHeart?: boolean;
 }
 
 // Game states: TITLE, PLAYING, GAMEOVER
@@ -173,14 +174,40 @@ const catchItem = (item: FallingItem) => {
     localStorage.setItem('tuna_rain_highscore', highScore.value.toString());
   }
   
-  scorePopups.value.push({
-    id: Date.now() + Math.random(),
-    x: item.x + item.width / 2,
-    y: item.y,
-    text: `+${points}`,
-    age: 0,
-    isGolden: item.type === 'golden'
-  });
+  if (item.type === 'golden') {
+    lives.value = Math.min(10, lives.value + 1); // Increase lives by 1, cap at 10
+    
+    // Spawn score popup +50
+    scorePopups.value.push({
+      id: Date.now() + Math.random(),
+      x: item.x + item.width / 2 - 22,
+      y: item.y,
+      text: '+50',
+      age: 0,
+      isGolden: true
+    });
+    
+    // Spawn life recovery popup (+1 ❤️)
+    scorePopups.value.push({
+      id: Date.now() + Math.random(),
+      x: item.x + item.width / 2 + 22,
+      y: item.y,
+      text: '+1 ❤️',
+      age: 0,
+      isGolden: false,
+      isHeart: true
+    });
+  } else {
+    // Normal chunk
+    scorePopups.value.push({
+      id: Date.now() + Math.random(),
+      x: item.x + item.width / 2,
+      y: item.y,
+      text: `+${points}`,
+      age: 0,
+      isGolden: false
+    });
+  }
 };
 
 const loseLife = () => {
@@ -357,7 +384,7 @@ onUnmounted(() => {
         v-for="popup in scorePopups" 
         :key="popup.id" 
         class="floating-score"
-        :class="{ golden: popup.isGolden }"
+        :class="{ golden: popup.isGolden, heart: popup.isHeart }"
         :style="{
           left: `${popup.x}px`,
           top: `${popup.y}px`
@@ -607,6 +634,12 @@ onUnmounted(() => {
   color: #f59e0b;
   text-shadow: 0 0 12px rgba(245, 158, 11, 0.9);
   font-size: 2.2rem;
+}
+
+.floating-score.heart {
+  color: #f43f5e;
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.9);
+  font-size: 1.8rem;
 }
 
 @keyframes floatUp {
