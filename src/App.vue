@@ -41,6 +41,21 @@ const isTeleporting = ref(false);
 const fallingItems = ref<FallingItem[]>([]);
 const scorePopups = ref<ScorePopup[]>([]);
 
+const currentLevel = ref(1);
+const showLevelUp = ref(false);
+let levelUpTimeout: number | null = null;
+
+const triggerLevelUp = () => {
+  showLevelUp.value = false;
+  setTimeout(() => {
+    showLevelUp.value = true;
+    if (levelUpTimeout) clearTimeout(levelUpTimeout);
+    levelUpTimeout = window.setTimeout(() => {
+      showLevelUp.value = false;
+    }, 2000);
+  }, 50);
+};
+
 const keysPressed = {
   ArrowLeft: false,
   ArrowRight: false
@@ -145,9 +160,9 @@ const spawnItem = () => {
   const x = Math.random() * (window.innerWidth - width);
   const y = -height;
   
-  // Base speed scales up slowly as the score increases
+  // Base speed scales up by level
   const baseSpeed = Math.random() * 2 + 3.5;
-  const speed = baseSpeed + (score.value / 180);
+  const speed = baseSpeed + (currentLevel.value - 1) * 1.5;
   
   const angle = Math.random() * 360;
   const spinSpeed = (Math.random() - 0.5) * 4; // rotation speed between -2 and +2 degrees per frame
@@ -168,6 +183,13 @@ const spawnItem = () => {
 const catchItem = (item: FallingItem) => {
   const points = item.type === 'golden' ? 50 : 10;
   score.value += points;
+  
+  // Check for Level Up (every 250 points)
+  const newLevel = Math.floor(score.value / 250) + 1;
+  if (newLevel > currentLevel.value) {
+    currentLevel.value = newLevel;
+    triggerLevelUp();
+  }
   
   if (score.value > highScore.value) {
     highScore.value = score.value;
@@ -226,7 +248,7 @@ const gameLoop = (timestamp: number) => {
   lastTime = timestamp;
   
   // 1. Move Player
-  const moveSpeed = 18; // pixels per frame
+  const moveSpeed = 25; // pixels per frame
   if (keysPressed.ArrowLeft) {
     offsetX.value -= moveSpeed;
     rotation.value = -12;
@@ -252,7 +274,7 @@ const gameLoop = (timestamp: number) => {
   
   // 2. Spawning Chunks
   spawnTimer += deltaTime;
-  const spawnInterval = Math.max(280, 1000 - Math.floor(score.value / 100) * 100);
+  const spawnInterval = Math.max(250, 1000 - (currentLevel.value - 1) * 150);
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
     spawnItem();
@@ -313,6 +335,9 @@ const startGame = () => {
   keysPressed.ArrowRight = false;
   lastTime = 0;
   spawnTimer = 0;
+  
+  currentLevel.value = 1;
+  triggerLevelUp(); // Trigger "LEVEL 1" banner at start
   
   gameState.value = 'PLAYING';
   animationFrameId = requestAnimationFrame(gameLoop);
@@ -378,6 +403,14 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Level Up Announcement Banner -->
+    <div v-if="showLevelUp && gameState === 'PLAYING'" class="level-up-overlay">
+      <div class="level-up-banner">
+        <h2 class="level-up-title">LEVEL UP!</h2>
+        <div class="level-up-number">LEVEL {{ currentLevel }}</div>
+      </div>
+    </div>
+
     <!-- Score Popups Layer -->
     <div v-if="gameState === 'PLAYING'" class="popups-layer">
       <div 
@@ -416,7 +449,7 @@ onUnmounted(() => {
 
     <div v-else-if="gameState === 'TITLE'" class="game-overlay">
       <div class="glass-menu">
-        <h1 class="glow-title">TUNA RAIN</h1>
+        <h1 class="glow-title">참치를 담아라!</h1>
         <p class="tagline">참치 살코기 빗속에서 참치캔을 조작해 살코기를 골라 받아내세요!</p>
         
         <div class="highscore-badge">
@@ -851,6 +884,67 @@ onUnmounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+/* Level Up Banner overlay and styles */
+.level-up-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 150;
+}
+
+.level-up-banner {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  animation: bannerEnter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+             bannerExit 0.5s ease-in 1.5s forwards;
+}
+
+.level-up-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #67e8f9;
+  text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 35px #0891b2;
+  margin: 0;
+  letter-spacing: 4px;
+}
+
+.level-up-number {
+  font-size: 4rem;
+  font-weight: 950;
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px #3b82f6, 0 0 45px #1d4ed8;
+  margin-top: 5px;
+  letter-spacing: 2px;
+}
+
+@keyframes bannerEnter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes bannerExit {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -70%) scale(0.85);
   }
 }
 </style>
