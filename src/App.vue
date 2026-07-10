@@ -187,10 +187,10 @@ onUnmounted(() => {
 
 .tuna-can-static {
   position: absolute;
-  bottom: 25px; /* Moved slightly upwards as requested */
+  bottom: 38px; /* Moved slightly further upwards */
   left: 50%;
   transform: translate(calc(-50% + v-bind(offsetXPx)), 0) rotate(v-bind(rotationDeg));
-  height: 112px; /* 1.5x larger than 75px */
+  height: 135px; /* Larger size */
   transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth slide and tilt transition */
   transform-origin: bottom center; /* Pivot from the bottom for natural tilt */
 }
