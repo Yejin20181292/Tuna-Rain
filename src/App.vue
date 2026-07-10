@@ -132,16 +132,16 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: visible; /* Prevent the larger can from being clipped at the top */
   pointer-events: none;
 }
 
 .tuna-can-static {
   position: absolute;
-  bottom: 12px; /* Adjust this value so the larger can sits precisely on the guide rail track */
+  bottom: 25px; /* Moved slightly upwards as requested */
   left: 50%;
   transform: translateX(-50%);
-  height: 75px; /* Larger size as requested */
+  height: 112px; /* 1.5x larger than 75px */
 }
 
 .tuna-can-static img {
