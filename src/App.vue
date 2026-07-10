@@ -46,7 +46,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
 onMounted(() => {
   const img = new Image();
-  img.src = '/tuna-can.png';
+  img.src = '/tuna-can.jpg';
   img.onload = () => {
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
@@ -62,6 +62,11 @@ onMounted(() => {
     
     // Helper to get pixel index
     const getIdx = (x: number, y: number) => (y * width + x) * 4;
+    
+    // Get reference background color from the top-left corner
+    const refR = data[0];
+    const refG = data[1];
+    const refB = data[2];
     
     // Visited map for flood fill
     const visited = new Uint8Array(width * height);
@@ -83,7 +88,7 @@ onMounted(() => {
       }
     }
     
-    // BFS to find all connected background (near-white) pixels
+    // BFS to find all connected background pixels close to reference corner color
     while (queue.length > 0) {
       const [x, y] = queue.shift()!;
       const idx = getIdx(x, y);
@@ -92,8 +97,11 @@ onMounted(() => {
       const g = data[idx+1];
       const b = data[idx+2];
       
-      // Color threshold: if close to white, make transparent and traverse
-      if (r > 240 && g > 240 && b > 240) {
+      // Calculate color distance from the corner reference pixel
+      const colorDist = Math.abs(r - refR) + Math.abs(g - refG) + Math.abs(b - refB);
+      
+      // If close to the reference color, make transparent and traverse neighbors
+      if (colorDist < 45) { // Threshold of 45 sum (avg 15 per channel)
         data[idx+3] = 0; // Alpha = 0
         
         const neighbors = [
