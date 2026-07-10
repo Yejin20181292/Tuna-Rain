@@ -36,6 +36,51 @@ const score = ref(0);
 const highScore = ref(0);
 const lives = ref(10);
 
+interface LeaderboardEntry {
+  name: string;
+  score: number;
+  level: number;
+  date: string;
+}
+
+const leaderboard = ref<LeaderboardEntry[]>([]);
+const playerName = ref('');
+const showNameInput = ref(false);
+const submittedName = ref(false);
+const newRankIndex = ref(-1);
+
+const defaultLeaderboard: LeaderboardEntry[] = [
+  { name: 'CAT_CATCH', score: 1200, level: 5, date: '2026-07-10' },
+  { name: 'TUNA_KING', score: 1000, level: 5, date: '2026-07-10' },
+  { name: 'CAN_OPENR', score: 850, level: 4, date: '2026-07-10' },
+  { name: 'TUNA_LVER', score: 700, level: 3, date: '2026-07-10' },
+  { name: 'SALMON_NO', score: 550, level: 3, date: '2026-07-10' },
+  { name: 'ARCADE_FN', score: 400, level: 2, date: '2026-07-10' },
+  { name: 'RAIN_DANC', score: 300, level: 2, date: '2026-07-10' },
+  { name: 'FAST_HAND', score: 200, level: 1, date: '2026-07-10' },
+  { name: 'TUNA_LITE', score: 100, level: 1, date: '2026-07-10' },
+  { name: 'NOOB_PLAY', score: 50, level: 1, date: '2026-07-10' },
+];
+
+const submitScore = () => {
+  if (submittedName.value) return;
+  const nameToSave = playerName.value.trim().toUpperCase().slice(0, 8) || 'PLAYER';
+  const entry: LeaderboardEntry = {
+    name: nameToSave,
+    score: score.value,
+    level: currentLevel.value,
+    date: new Date().toISOString().split('T')[0]
+  };
+  leaderboard.value.push(entry);
+  leaderboard.value.sort((a, b) => b.score - a.score);
+  leaderboard.value = leaderboard.value.slice(0, 10);
+  localStorage.setItem('tuna_rain_leaderboard', JSON.stringify(leaderboard.value));
+  
+  newRankIndex.value = leaderboard.value.findIndex(e => e.score === entry.score && e.name === entry.name && e.level === entry.level);
+  showNameInput.value = false;
+  submittedName.value = true;
+};
+
 const offsetX = ref(0);
 const rotation = ref(0);
 const isTeleporting = ref(false);
@@ -271,6 +316,18 @@ const loseLife = () => {
   if (lives.value <= 0) {
     gameState.value = 'GAMEOVER';
     cancelAnimationFrame(animationFrameId);
+    
+    // Check if score enters TOP 10
+    submittedName.value = false;
+    playerName.value = '';
+    newRankIndex.value = -1;
+    
+    const isTop10 = leaderboard.value.length < 10 || score.value > leaderboard.value[leaderboard.value.length - 1]?.score;
+    if (isTop10) {
+      showNameInput.value = true;
+    } else {
+      showNameInput.value = false;
+    }
   }
 };
 
@@ -386,6 +443,14 @@ onMounted(async () => {
   const savedHighScore = localStorage.getItem('tuna_rain_highscore');
   if (savedHighScore) {
     highScore.value = parseInt(savedHighScore, 10);
+  }
+
+  const savedLeaderboard = localStorage.getItem('tuna_rain_leaderboard');
+  if (savedLeaderboard) {
+    leaderboard.value = JSON.parse(savedLeaderboard);
+  } else {
+    leaderboard.value = [...defaultLeaderboard];
+    localStorage.setItem('tuna_rain_leaderboard', JSON.stringify(defaultLeaderboard));
   }
   
   window.addEventListener('keydown', handleKeyDown);
@@ -513,6 +578,23 @@ onUnmounted(() => {
         <h1 class="glow-title gameover">GAME OVER</h1>
         <p class="tagline">더 이상 살코기를 담을 칸이 없습니다!</p>
 
+        <!-- New Rank Nickname Input Form -->
+        <div v-if="showNameInput" class="name-input-box animate-fadeInUp">
+          <h3>🎉 TOP 10 랭킹 진입! 🎉</h3>
+          <p>닉네임을 입력해 전광판에 기록하세요 (최대 8자)</p>
+          <div class="input-row">
+            <input 
+              v-model="playerName" 
+              type="text" 
+              maxlength="8" 
+              placeholder="NICKNAME" 
+              @keyup.enter="submitScore" 
+              class="nickname-input"
+            />
+            <button class="menu-btn submit-btn" @click="submitScore">등록</button>
+          </div>
+        </div>
+
         <div class="score-results">
           <div class="score-row">
             <span class="label">최종 획득 점수</span>
@@ -525,6 +607,42 @@ onUnmounted(() => {
           <div class="score-row">
             <span class="label">개인 최고 기록</span>
             <span class="val">{{ highScore }}</span>
+          </div>
+        </div>
+
+        <!-- Leaderboard display -->
+        <div class="leaderboard-box">
+          <h3>🏆 실시간 TOP 10 랭킹</h3>
+          <div class="leaderboard-table">
+            <div class="table-header">
+              <span class="col-rank">순위</span>
+              <span class="col-name">닉네임</span>
+              <span class="col-level">레벨</span>
+              <span class="col-score">점수</span>
+            </div>
+            <div class="table-body">
+              <div 
+                v-for="(entry, index) in leaderboard" 
+                :key="index" 
+                class="table-row"
+                :class="{ 
+                  highlight: index === newRankIndex, 
+                  rank1: index === 0, 
+                  rank2: index === 1, 
+                  rank3: index === 2 
+                }"
+              >
+                <span class="col-rank">
+                  <template v-if="index === 0">🥇</template>
+                  <template v-else-if="index === 1">🥈</template>
+                  <template v-else-if="index === 2">🥉</template>
+                  <template v-else>{{ index + 1 }}</template>
+                </span>
+                <span class="col-name">{{ entry.name }}</span>
+                <span class="col-level">Lv.{{ entry.level }}</span>
+                <span class="col-score">{{ entry.score }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -925,6 +1043,178 @@ onUnmounted(() => {
   color: #ef4444;
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.9), 0 0 20px rgba(239, 68, 68, 0.4);
   font-size: 2.2rem;
+}
+
+/* Leaderboard & Name input styling */
+.gameover-box {
+  width: 480px !important;
+  max-width: 90vw;
+}
+
+.leaderboard-box {
+  margin: 15px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.leaderboard-box h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+  color: #67e8f9;
+  text-shadow: 0 0 8px rgba(103, 232, 249, 0.4);
+  text-align: center;
+}
+
+.leaderboard-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.table-header {
+  display: flex;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  padding: 4px 8px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-body {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for scoreboard list */
+.table-body::-webkit-scrollbar {
+  width: 4px;
+}
+.table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.table-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.table-row {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.table-row.rank1 {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.2);
+  font-weight: 800;
+  color: #fef08a;
+}
+
+.table-row.rank2 {
+  background: rgba(226, 232, 240, 0.06);
+  border-color: rgba(226, 232, 240, 0.15);
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.table-row.rank3 {
+  background: rgba(180, 83, 9, 0.06);
+  border-color: rgba(180, 83, 9, 0.15);
+  font-weight: 700;
+  color: #ffedd5;
+}
+
+.table-row.highlight {
+  animation: scoreRowHighlight 1s infinite alternate;
+  border-color: #67e8f9;
+}
+
+@keyframes scoreRowHighlight {
+  0% { background: rgba(103, 232, 249, 0.05); }
+  100% { background: rgba(103, 232, 249, 0.25); }
+}
+
+.col-rank { width: 15%; text-align: center; }
+.col-name { width: 35%; text-align: left; }
+.col-level { width: 25%; text-align: center; color: #94a3b8; }
+.col-score { width: 25%; text-align: right; font-weight: 900; }
+
+.table-row.rank1 .col-score { color: #f59e0b; text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+
+/* Name input styling */
+.name-input-box {
+  background: rgba(103, 232, 249, 0.05);
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  text-align: center;
+  animation: pulseInput 1.5s infinite alternate;
+}
+
+@keyframes pulseInput {
+  0% { border-color: rgba(103, 232, 249, 0.2); }
+  100% { border-color: rgba(103, 232, 249, 0.5); }
+}
+
+.name-input-box h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  color: #67e8f9;
+}
+
+.name-input-box p {
+  margin: 0 0 10px 0;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.nickname-input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-align: center;
+  width: 140px;
+  letter-spacing: 2px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.nickname-input:focus {
+  border-color: #67e8f9;
+  box-shadow: 0 0 8px rgba(103, 232, 249, 0.4);
+}
+
+.submit-btn {
+  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+  margin: 0 !important;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s ease-out forwards;
 }
 
 @keyframes pulse {
