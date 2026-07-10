@@ -6,31 +6,57 @@ const offsetX = ref(0);
 const rotation = ref(0);
 const moveStep = 30; // pixels to move per keypress
 let tiltTimeout: number | null = null;
+const isTeleporting = ref(false);
 
 const offsetXPx = computed(() => `${offsetX.value}px`);
 const rotationDeg = computed(() => `${rotation.value}deg`);
+const transitionStyle = computed(() => 
+  isTeleporting.value ? 'none' : 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+);
 
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowLeft') {
     event.preventDefault();
-    const minOffset = -(window.innerWidth / 2 - 80);
-    offsetX.value = Math.max(minOffset, offsetX.value - moveStep);
     rotation.value = -8; // Tilt left
     
     if (tiltTimeout) clearTimeout(tiltTimeout);
     tiltTimeout = window.setTimeout(() => {
       rotation.value = 0;
     }, 150);
+    
+    const wrapBoundary = window.innerWidth / 2 + 100;
+    const nextOffset = offsetX.value - moveStep;
+    
+    if (nextOffset < -wrapBoundary) {
+      isTeleporting.value = true;
+      offsetX.value = wrapBoundary;
+      window.setTimeout(() => {
+        isTeleporting.value = false;
+      }, 50);
+    } else {
+      offsetX.value = nextOffset;
+    }
   } else if (event.key === 'ArrowRight') {
     event.preventDefault();
-    const maxOffset = window.innerWidth / 2 - 80;
-    offsetX.value = Math.min(maxOffset, offsetX.value + moveStep);
     rotation.value = 8; // Tilt right
     
     if (tiltTimeout) clearTimeout(tiltTimeout);
     tiltTimeout = window.setTimeout(() => {
       rotation.value = 0;
     }, 150);
+    
+    const wrapBoundary = window.innerWidth / 2 + 100;
+    const nextOffset = offsetX.value + moveStep;
+    
+    if (nextOffset > wrapBoundary) {
+      isTeleporting.value = true;
+      offsetX.value = -wrapBoundary;
+      window.setTimeout(() => {
+        isTeleporting.value = false;
+      }, 50);
+    } else {
+      offsetX.value = nextOffset;
+    }
   }
 };
 
@@ -199,7 +225,7 @@ onUnmounted(() => {
   left: 50%;
   transform: translate(calc(-50% + v-bind(offsetXPx)), 0) rotate(v-bind(rotationDeg));
   height: 135px; /* Larger size */
-  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth slide and tilt transition */
+  transition: v-bind(transitionStyle); /* Smooth slide and tilt transition, or 'none' during teleport */
   transform-origin: bottom center; /* Pivot from the bottom for natural tilt */
 }
 
