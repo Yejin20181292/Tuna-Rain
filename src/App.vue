@@ -8,7 +8,7 @@ interface FallingItem {
   speed: number;
   width: number;
   height: number;
-  type: 'normal' | 'golden';
+  type: 'normal' | 'golden' | 'bone';
   angle: number;
   spinSpeed: number;
 }
@@ -21,6 +21,7 @@ interface ScorePopup {
   age: number;
   isGolden: boolean;
   isHeart?: boolean;
+  isHazard?: boolean;
 }
 
 // Game states: TITLE, PLAYING, GAMEOVER
@@ -29,6 +30,7 @@ const isLoading = ref(true);
 
 const processedTunaSrc = ref('');
 const processedMeatSrc = ref('');
+const processedBoneSrc = ref('');
 
 const score = ref(0);
 const highScore = ref(0);
@@ -154,9 +156,25 @@ const handleKeyUp = (event: KeyboardEvent) => {
 };
 
 const spawnItem = () => {
-  const isGolden = Math.random() < 0.15; // 15% chance to spawn golden tuna
-  const width = 85;
-  const height = 60;
+  const rand = Math.random();
+  let type: 'normal' | 'golden' | 'bone' = 'normal';
+  let width = 85;
+  let height = 60;
+  
+  if (rand < 0.25) { // 25% chance of spawning hazard fish bone
+    type = 'bone';
+    width = 65;
+    height = 37; // slightly smaller than tuna chunk
+  } else if (rand < 0.3625) { // 11.25% chance of spawning golden tuna
+    type = 'golden';
+    width = 85;
+    height = 60;
+  } else { // 63.75% chance of spawning normal tuna
+    type = 'normal';
+    width = 85;
+    height = 60;
+  }
+  
   const x = Math.random() * (window.innerWidth - width);
   const y = -height;
   
@@ -165,7 +183,7 @@ const spawnItem = () => {
   const speed = baseSpeed + (currentLevel.value - 1) * 0.9;
   
   const angle = Math.random() * 360;
-  const spinSpeed = (Math.random() - 0.5) * 4; // rotation speed between -2 and +2 degrees per frame
+  const spinSpeed = (Math.random() - 0.5) * 4;
   
   fallingItems.value.push({
     id: Date.now() + Math.random(),
@@ -174,13 +192,29 @@ const spawnItem = () => {
     width,
     height,
     speed,
-    type: isGolden ? 'golden' : 'normal',
+    type,
     angle,
     spinSpeed
   });
 };
 
 const catchItem = (item: FallingItem) => {
+  if (item.type === 'bone') {
+    loseLife(); // Lose 1 life on catching a fish bone hazard
+    
+    // Spawn floating damage popup (-1 ❤️)
+    scorePopups.value.push({
+      id: Date.now() + Math.random(),
+      x: item.x + item.width / 2,
+      y: item.y,
+      text: '-1 ❤️',
+      age: 0,
+      isGolden: false,
+      isHazard: true
+    });
+    return;
+  }
+  
   const points = item.type === 'golden' ? 50 : 10;
   score.value += points;
   
@@ -346,6 +380,7 @@ const startGame = () => {
 onMounted(async () => {
   processedTunaSrc.value = await processImage('/tuna-can.jpg');
   processedMeatSrc.value = await processImage('/tuna-meat.png');
+  processedBoneSrc.value = await processImage('/fish-bone.png');
   isLoading.value = false;
   
   const savedHighScore = localStorage.getItem('tuna_rain_highscore');
@@ -385,7 +420,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Falling Items Layer -->
-    <div v-if="gameState === 'PLAYING' && processedMeatSrc" class="falling-layer">
+    <div v-if="gameState === 'PLAYING' && processedMeatSrc && processedBoneSrc" class="falling-layer">
       <div 
         v-for="item in fallingItems" 
         :key="item.id" 
@@ -399,7 +434,8 @@ onUnmounted(() => {
           transform: `rotate(${item.angle}deg)`
         }"
       >
-        <img :src="processedMeatSrc" alt="Tuna Chunk" />
+        <img v-if="item.type === 'bone'" :src="processedBoneSrc" alt="Fish Bone" />
+        <img v-else :src="processedMeatSrc" alt="Tuna Chunk" />
       </div>
     </div>
 
@@ -417,7 +453,7 @@ onUnmounted(() => {
         v-for="popup in scorePopups" 
         :key="popup.id" 
         class="floating-score"
-        :class="{ golden: popup.isGolden, heart: popup.isHeart }"
+        :class="{ golden: popup.isGolden, heart: popup.isHeart, hazard: popup.isHazard }"
         :style="{
           left: `${popup.x}px`,
           top: `${popup.y}px`
@@ -462,6 +498,7 @@ onUnmounted(() => {
             <li>⌨️ <b>좌우 방향키(←, →)</b>를 눌러 참치캔을 레일 위로 움직집니다.</li>
             <li>🐟 <b>하늘에서 비처럼 내리는 참치 살코기</b>를 참치캔 안으로 받으세요 (+10).</li>
             <li>✨ 희귀한 <b>황금 참치 살코기</b>는 엄청난 보너스를 제공합니다 (+50).</li>
+            <li>☠️ <b>생선 가시</b>를 참치캔으로 받으면 <b>라이프(❤️)가 1 줄어드니</b> 피하세요!</li>
             <li>💔 일반 살코기를 바닥에 떨어뜨리면 <b>라이프(❤️)가 1 줄어듭니다</b> (총 10개).</li>
             <li>🌀 화면 끝으로 넘어가면 <b>반대편 화면 끝으로 이어지는 루프(Wrap)</b> 효과 적용!</li>
           </ul>
@@ -644,6 +681,10 @@ onUnmounted(() => {
 
 .falling-chunk.golden img {
   filter: hue-rotate(52deg) brightness(1.6) saturate(1.8) drop-shadow(0 0 12px #eab308);
+}
+
+.falling-chunk.bone img {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
 }
 
 /* Score Popups Layer */
@@ -878,6 +919,12 @@ onUnmounted(() => {
 .level-color {
   color: #67e8f9;
   text-shadow: 0 0 10px rgba(103, 232, 249, 0.6);
+}
+
+.floating-score.hazard {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.9), 0 0 20px rgba(239, 68, 68, 0.4);
+  font-size: 2.2rem;
 }
 
 @keyframes pulse {
