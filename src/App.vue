@@ -24,8 +24,8 @@ interface ScorePopup {
   isHazard?: boolean;
 }
 
-// Game states: TITLE, PLAYING, GAMEOVER
-const gameState = ref<'TITLE' | 'PLAYING' | 'GAMEOVER'>('TITLE');
+// Game states: TITLE, PLAYING, PAUSED, GAMEOVER
+const gameState = ref<'TITLE' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'>('TITLE');
 const isLoading = ref(true);
 
 const processedTunaSrc = ref('');
@@ -186,7 +186,26 @@ const processImage = (src: string): Promise<string> => {
   });
 };
 
+const resumeGame = () => {
+  if (gameState.value !== 'PAUSED') return;
+  gameState.value = 'PLAYING';
+  lastTime = 0;
+  animationFrameId = requestAnimationFrame(gameLoop);
+};
+
 const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    if (gameState.value === 'PLAYING') {
+      gameState.value = 'PAUSED';
+      cancelAnimationFrame(animationFrameId);
+      keysPressed.ArrowLeft = false;
+      keysPressed.ArrowRight = false;
+    } else if (gameState.value === 'PAUSED') {
+      resumeGame();
+    }
+    return;
+  }
+  
   if (gameState.value !== 'PLAYING') return;
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
@@ -570,6 +589,30 @@ onUnmounted(() => {
         </div>
 
         <button class="menu-btn" @click="startGame">게임 시작</button>
+      </div>
+    </div>
+
+    <!-- Pause Screen Overlay -->
+    <div v-else-if="gameState === 'PAUSED'" class="game-overlay">
+      <div class="glass-menu pause-box animate-fadeInUp">
+        <h1 class="glow-title pause">PAUSED</h1>
+        <p class="tagline">일시정지 중입니다</p>
+        
+        <div class="pause-details">
+          <div class="score-results">
+            <div class="score-row">
+              <span class="label">현재 점수</span>
+              <span class="val pulse-glow-cyan">{{ score }}</span>
+            </div>
+            <div class="score-row">
+              <span class="label">현재 레벨</span>
+              <span class="val level-color">LEVEL {{ currentLevel }}</span>
+            </div>
+          </div>
+          <p class="pause-desc">ESC 키를 다시 누르거나 아래 버튼을 클릭하여 계속 진행하세요.</p>
+        </div>
+
+        <button class="menu-btn resume" @click="resumeGame">이어하기</button>
       </div>
     </div>
 
@@ -1032,6 +1075,29 @@ onUnmounted(() => {
   color: #ef4444;
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
   animation: pulse 1s infinite alternate;
+}
+
+.pulse-glow-cyan {
+  color: #67e8f9;
+  text-shadow: 0 0 10px rgba(103, 232, 249, 0.6);
+  animation: pulse 1s infinite alternate;
+}
+
+.pause-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 15px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.pause-box {
+  width: 380px !important;
+  max-width: 90vw;
+}
+
+.glow-title.pause {
+  text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 35px #0891b2;
 }
 
 .level-color {
