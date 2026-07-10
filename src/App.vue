@@ -1,7 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const processedTunaSrc = ref('');
+const offsetX = ref(0);
+const rotation = ref(0);
+const moveStep = 30; // pixels to move per keypress
+let tiltTimeout: number | null = null;
+
+const offsetXPx = computed(() => `${offsetX.value}px`);
+const rotationDeg = computed(() => `${rotation.value}deg`);
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    const minOffset = -(window.innerWidth / 2 - 80);
+    offsetX.value = Math.max(minOffset, offsetX.value - moveStep);
+    rotation.value = -8; // Tilt left
+    
+    if (tiltTimeout) clearTimeout(tiltTimeout);
+    tiltTimeout = window.setTimeout(() => {
+      rotation.value = 0;
+    }, 150);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    const maxOffset = window.innerWidth / 2 - 80;
+    offsetX.value = Math.min(maxOffset, offsetX.value + moveStep);
+    rotation.value = 8; // Tilt right
+    
+    if (tiltTimeout) clearTimeout(tiltTimeout);
+    tiltTimeout = window.setTimeout(() => {
+      rotation.value = 0;
+    }, 150);
+  }
+};
+
+const handleKeyUp = (event: KeyboardEvent) => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    rotation.value = 0;
+    if (tiltTimeout) {
+      clearTimeout(tiltTimeout);
+      tiltTimeout = null;
+    }
+  }
+};
 
 onMounted(() => {
   const img = new Image();
@@ -77,6 +118,14 @@ onMounted(() => {
     ctx.putImageData(imgData, 0, 0);
     processedTunaSrc.value = canvas.toDataURL('image/png');
   };
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
 });
 </script>
 
@@ -86,7 +135,7 @@ onMounted(() => {
       <!-- Conveyor Belt Background -->
       <img src="/conveyor.png" alt="Conveyor Belt" class="conveyor-belt" />
       
-      <!-- Static Tuna Can -->
+      <!-- Static / Interactive Tuna Can -->
       <div v-if="processedTunaSrc" class="cans-container">
         <div class="tuna-can-static">
           <img :src="processedTunaSrc" alt="Tuna Can" />
@@ -140,8 +189,10 @@ onMounted(() => {
   position: absolute;
   bottom: 25px; /* Moved slightly upwards as requested */
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(calc(-50% + v-bind(offsetXPx)), 0) rotate(v-bind(rotationDeg));
   height: 112px; /* 1.5x larger than 75px */
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth slide and tilt transition */
+  transform-origin: bottom center; /* Pivot from the bottom for natural tilt */
 }
 
 .tuna-can-static img {
